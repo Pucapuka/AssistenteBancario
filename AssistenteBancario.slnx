@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="AssistenteBancario.API/AssistenteBancario.API.csproj" />
+  <Project Path="AssistenteBancario.Domain/AssistenteBancario.Domain.csproj" />
+  <Project Path="AssistenteBancario.Tests/AssistenteBancario.Tests.csproj" />
+</Solution>
