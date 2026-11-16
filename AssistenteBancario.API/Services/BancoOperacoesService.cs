@@ -231,6 +231,83 @@ public class BancoOperacoesService
         }
     }
 
+    //==========================================================
+    // Validar antes de transferir
+    //==========================================================
+        public async Task<OperacaoBancariaResponse> ValidarTransferenciaAsync(
+        int numeroContaOrigem,
+        int numeroContaDestino,
+        decimal valor)
+    {
+        if (numeroContaOrigem <= 0 || numeroContaDestino <= 0)
+        {
+            return new(false, "Número de conta inválido.", null);
+        }
+    
+        if (numeroContaOrigem == numeroContaDestino)
+        {
+            return new(
+                false,
+                "Não é possível transferir para a própria conta.",
+                null
+            );
+        }
+    
+        if (!TentarConverterParaCentavos(valor, out long valorCentavos))
+        {
+            return new(
+                false,
+                "O valor da transferência deve ser positivo e possuir no máximo duas casas decimais.",
+                null
+            );
+        }
+    
+        var contas = await _context.Contas
+            .AsNoTracking()
+            .Where(c =>
+                c.Numero == numeroContaOrigem ||
+                c.Numero == numeroContaDestino)
+            .Select(c => new
+            {
+                c.Numero,
+                c.SaldoCentavos
+            })
+            .ToListAsync();
+    
+        var origem = contas.FirstOrDefault(
+            c => c.Numero == numeroContaOrigem
+        );
+    
+        var destino = contas.FirstOrDefault(
+            c => c.Numero == numeroContaDestino
+        );
+    
+        if (origem is null)
+        {
+            return new(false, "Conta de origem não encontrada.", null);
+        }
+    
+        if (destino is null)
+        {
+            return new(false, "Conta de destino não encontrada.", null);
+        }
+    
+        if (origem.SaldoCentavos < valorCentavos)
+        {
+            return new(
+                false,
+                "Saldo insuficiente para realizar esta transferência.",
+                origem.SaldoCentavos / 100m
+            );
+        }
+    
+        return new(
+            true,
+            "Transferência disponível para confirmação.",
+            origem.SaldoCentavos / 100m
+        );
+    }
+
     // =========================================================
     // TRANSFERIR
     // =========================================================

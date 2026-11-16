@@ -39,7 +39,7 @@ O objetivo é permitir que um usuário consulte informações de uma conta e sol
 
 ```text
 AssistenteBancario/
-├── AssistenteBancario.API/
+├── AssistenteBancario.API/ # Backend ASP.NET Core
 │   ├── Controllers/
 │   ├── Data/
 │   ├── DTOs/
@@ -50,9 +50,9 @@ AssistenteBancario/
 │   ├── Services/
 │   ├── Tools/
 │   └── Program.cs
-├── AssistenteBancario.Domain/
+├── AssistenteBancario.Domain/  # Regras de domínio
 │   └── Models/
-├── AssistenteBancario.Tests/
+├── AssistenteBancario.Tests/  # Testes automatizados
 │   └── Services/
 └── AssistenteBancario.slnx
 ```
