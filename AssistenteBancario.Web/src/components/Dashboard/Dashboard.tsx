@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 
 import {
   Plus,
@@ -15,16 +15,8 @@ import {
   confirmarOperacao,
 } from "../../services/assistenteService";
 
-import type { OperacaoPendente } from "../../types/banco";
-
-type Transaction = {
-  id: number;
-  title: string;
-  category: string;
-  date: string;
-  amount: number;
-  type: "income" | "expense";
-};
+import type { OperacaoPendente, TransacaoHistorico } from "../../types/banco";
+import { consultarTransacoes } from "../../services/bancoService";
 
 type Message = {
   id: string;
@@ -51,45 +43,19 @@ interface DashboardProps {
   onRefreshSaldo: () => Promise<void>;
 }
 
-const transactions: Transaction[] = [
-  {
-    id: 1,
-    title: "Salário",
-    category: "Transferência recebida",
-    date: "Hoje, 09:30",
-    amount: 3500,
-    type: "income",
-  },
-  {
-    id: 2,
-    title: "Supermercado",
-    category: "Alimentação",
-    date: "Hoje, 08:15",
-    amount: 245.8,
-    type: "expense",
-  },
-  {
-    id: 3,
-    title: "Internet",
-    category: "Serviços",
-    date: "Ontem, 16:20",
-    amount: 99.9,
-    type: "expense",
-  },
-  {
-    id: 4,
-    title: "Transferência recebida",
-    category: "Pix",
-    date: "12 Nov, 14:10",
-    amount: 150,
-    type: "income",
-  },
-];
-
 function formatCurrency(value: number) {
   return value.toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
+  });
+}
+
+function formatarData(data: string) {
+  return new Date(data).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -139,6 +105,37 @@ function Dashboard({
       text: "Olá! Sou seu assistente bancário. Como posso ajudar você hoje?",
     },
   ]);
+
+  const [transacoes, setTransacoes] = useState<TransacaoHistorico[]>([]);
+  const totalEntradas = transacoes
+  .filter((transacao) => transacao.direcao === "ENTRADA")
+  .reduce((total, transacao) => total + transacao.valor, 0);
+
+  const totalSaidas = transacoes
+  .filter((transacao) => transacao.direcao === "SAIDA")
+  .reduce((total, transacao) => total + transacao.valor, 0);
+  const [carregandoTransacoes, setCarregandoTransacoes] = useState(false);
+  const [erroTransacoes, setErroTransacoes] = useState<string | null>(null);
+
+  //Carrega histórico de transações
+  async function carregarTransacoes() {
+    setCarregandoTransacoes(true);
+    setErroTransacoes(null);
+  
+    try {
+      const resultado = await consultarTransacoes(numeroConta);
+      setTransacoes(resultado.transacoes);
+    } catch (error) {
+      console.error("Erro ao carregar transações:", error);
+      setErroTransacoes("Não foi possível carregar o histórico.");
+    } finally {
+      setCarregandoTransacoes(false);
+    }
+  }
+
+  useEffect(() => {
+    carregarTransacoes();
+  }, [numeroConta]);
 
   // Envia a mensagem para o agente bancário.
   async function handleSendMessage(event: FormEvent<HTMLFormElement>) {
@@ -324,7 +321,7 @@ function Dashboard({
           </div>
 
           <span>Entradas</span>
-          <h3>{formatCurrency(3650)}</h3>
+          <h3>{formatCurrency(totalEntradas)}</h3>
           <small>Valores demonstrativos</small>
         </article>
 
@@ -334,7 +331,7 @@ function Dashboard({
           </div>
 
           <span>Saídas</span>
-          <h3>{formatCurrency(345.7)}</h3>
+          <h3>{formatCurrency(totalSaidas)}</h3>
           <small>Valores demonstrativos</small>
         </article>
       </section>
@@ -353,31 +350,61 @@ function Dashboard({
           </div>
 
           <div className="transaction-list">
-            {transactions.map((transaction) => (
-              <div className="transaction-item" key={transaction.id}>
-                <div className={`transaction-icon ${transaction.type}`}>
-                  {transaction.type === "income" ? (
-                    <ArrowDownLeft size={19} />
-                  ) : (
-                    <ArrowUpRight size={19} />
-                  )}
-                </div>
-
-                <div className="transaction-info">
-                  <strong>{transaction.title}</strong>
-                  <span>{transaction.category}</span>
-                </div>
-
-                <div className="transaction-value">
-                  <strong className={transaction.type}>
-                    {transaction.type === "income" ? "+" : "-"}
-                    {formatCurrency(transaction.amount)}
-                  </strong>
-
-                  <span>{transaction.date}</span>
-                </div>
-              </div>
-            ))}
+            {carregandoTransacoes ? (
+              <p>Carregando movimentações...</p>
+            ) : erroTransacoes ? (
+              <p className="balance-error">{erroTransacoes}</p>
+            ) : transacoes.length === 0 ? (
+              <p>Nenhuma movimentação encontrada.</p>
+            ) : (
+              transacoes.slice(0, 5).map((transaction) => {
+                const isEntrada = transaction.direcao === "ENTRADA";
+              
+                const title =
+                  transaction.tipo === "DEPOSITO"
+                    ? "Depósito"
+                    : transaction.tipo === "SAQUE"
+                      ? "Saque"
+                      : isEntrada
+                        ? "Transferência recebida"
+                        : "Transferência enviada";
+              
+                const category =
+                  transaction.tipo === "DEPOSITO"
+                    ? "Depósito em conta"
+                    : transaction.tipo === "SAQUE"
+                      ? "Saque em conta"
+                      : isEntrada
+                        ? `Origem: ${transaction.numeroContaOrigem}`
+                        : `Destino: ${transaction.numeroContaDestino}`;
+              
+                return (
+                  <div className="transaction-item" key={transaction.id}>
+                    <div className={`transaction-icon ${isEntrada ? "income" : "expense"}`}>
+                      {isEntrada ? (
+                        <ArrowDownLeft size={19} />
+                      ) : (
+                        <ArrowUpRight size={19} />
+                      )}
+                    </div>
+                    
+                    <div className="transaction-info">
+                      <strong>{title}</strong>
+                      <span>{category}</span>
+                    </div>
+                    
+                    <div className="transaction-value">
+                      <strong className={isEntrada ? "income" : "expense"}>
+                        {isEntrada ? "+" : "-"}
+                        {formatCurrency(transaction.valor)}
+                      </strong>
+                    
+                      <span>{formatarData(transaction.dataHora)}</span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </article>
 

@@ -44,6 +44,80 @@ public class BancoOperacoesService
     }
 
     // =========================================================
+    // CONSULTAR HISTÓRICO DE TRANSAÇÕES
+    // =========================================================
+    
+    public async Task<HistoricoTransacoesResponse> ConsultarTransacoesAsync(
+        int numeroConta)
+    {
+        if (numeroConta <= 0)
+        {
+            return new(
+                false,
+                "Número de conta inválido.",
+                []
+            );
+        }
+    
+        var contaExiste = await _context.Contas
+            .AnyAsync(c => c.Numero == numeroConta);
+    
+        if (!contaExiste)
+        {
+            return new(
+                false,
+                "Conta não encontrada.",
+                []
+            );
+        }
+    
+        var transacoes = await _context.Transacoes
+            .AsNoTracking()
+            .Where(t =>
+                t.ContaOrigem == numeroConta ||
+                t.ContaDestino == numeroConta
+            )
+            .OrderByDescending(t => t.DataHora)
+            .ThenByDescending(t => t.Id)
+            .ToListAsync();
+    
+        var historico = transacoes.Select(t =>
+        {
+        var direcao = t.Tipo switch
+        {
+            "DEPOSITO" => "ENTRADA",
+
+            "SAQUE" => "SAIDA",
+
+            "TRANSFERENCIA" when t.ContaDestino == numeroConta
+                => "ENTRADA",
+
+            "TRANSFERENCIA" => "SAIDA",
+
+            _ => "INDEFINIDA"
+        };
+
+        return new TransacaoHistoricoResponse(
+            t.Id,
+            t.Tipo,
+            direcao,
+            t.ContaOrigem,
+            t.ContaDestino,
+            t.Destinatario,
+            t.ValorCentavos / 100m,
+            t.DataHora,
+            t.Status
+        );
+        }).ToList();
+        
+        return new(
+            true,
+            "Histórico consultado com sucesso.",
+            historico
+        );
+    }
+
+    // =========================================================
     // DEPOSITAR
     // =========================================================
 

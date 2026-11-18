@@ -74,4 +74,17 @@ public class ContasController : ControllerBase
 
         return Ok(resultado);
     }
+
+    [HttpGet("{numeroConta:int}/transacoes")]
+    public async Task<IActionResult> ConsultarTransacoes(int numeroConta)
+    {
+        var resultado = await _bancoService.ConsultarTransacoesAsync(
+            numeroConta
+        );
+    
+        if (!resultado.Sucesso)
+            return BadRequest(resultado);
+    
+        return Ok(resultado);
+    }
 }

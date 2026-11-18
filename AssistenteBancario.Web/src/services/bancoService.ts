@@ -1,5 +1,5 @@
 import { api } from "./api";
-import type { OperacaoBancariaResponse } from "../types/banco";
+import type { OperacaoBancariaResponse, HistoricoTransacoesResponse } from "../types/banco";
 
 export async function consultarSaldo(
   numeroConta: number
@@ -46,6 +46,16 @@ export async function transferir(
       numeroContaDestino,
       valor,
     }
+  );
+
+  return response.data;
+}
+
+export async function consultarTransacoes(
+  numeroConta: number
+): Promise<HistoricoTransacoesResponse> {
+  const response = await api.get<HistoricoTransacoesResponse>(
+    `/contas/${numeroConta}/transacoes`
   );
 
   return response.data;
