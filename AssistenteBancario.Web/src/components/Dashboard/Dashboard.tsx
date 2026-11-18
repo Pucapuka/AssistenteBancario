@@ -415,7 +415,7 @@ function Dashboard({
             </div>
 
             <div>
-              <h3>Assistente Moneta</h3>
+              <h3>Assistente SelfinAI</h3>
               <span>
                 <i /> Assistente bancário
               </span>

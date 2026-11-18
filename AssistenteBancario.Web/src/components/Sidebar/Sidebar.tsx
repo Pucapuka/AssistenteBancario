@@ -15,7 +15,7 @@ import {
             <Wallet size={23} />
           </div>
           <span>
-            Moneta<span className="brand-highlight">AI</span>
+            Selfin<span className="brand-highlight">AI</span>
           </span>
         </div>
   
@@ -58,7 +58,7 @@ import {
           </a>
   
           <div className="sidebar-footer">
-            <span>Moneta AI</span>
+            <span>SelfinAI</span>
             <span>Versão 0.1.0</span>
           </div>
         </div>
